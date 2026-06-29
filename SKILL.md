@@ -1,7 +1,7 @@
 ---
 name: ai-daily-report
 description: 为 AI 行业从业者、研究员、投资人与技术领袖生成面向个人注意力分配的中文 AI 情报简报：通过 Tavily MCP 检索近期一手信源、验证事实、过滤低价值 PR，提炼值得跟踪、值得尝试、可以忽略的信息，并写入 Get笔记。
-metadata: {"openclaw":{"emoji":"📰","requires":{},"services":[{"name":"get-note","required":true,"description":"必需。OpenClaw 云端已部署的 Get笔记能力，通过 scripts/save-to-getnote.sh 保存 Markdown 简报。"}]}}
+metadata: {"openclaw":{"emoji":"📰","requires":{},"services":[{"name":"get-note","required":true,"description":"必需。OpenClaw 云端已部署的 Get笔记能力，通过 scripts/save-to-getnote.py 保存 Markdown 简报。"}]}}
 ---
 
 # AI 个人情报简报
@@ -18,7 +18,7 @@ metadata: {"openclaw":{"emoji":"📰","requires":{},"services":[{"name":"get-not
 2. 必须按 `search-keywords.md` 分批执行 Discovery，再按 `source-quality.md` 评分、按底层事件去重，只对入围候选执行分级 Verification。发布前必须形成候选事件筛选表；筛选表可作为内部工作产物，不必写入最终简报。
 3. 必须严格使用 `template.md` 的章节结构与 Markdown 规则生成情报简报，不得自由改写栏目；模板明确允许省略的栏目除外。
 4. 保存前必须按 `output-checklist.md` 完成逐项自检；未通过则必须修改简报，不能直接发布。
-5. 必须通过 `{baseDir}/scripts/save-to-getnote.sh` 保存到 Get笔记并归档到指定知识库；脚本失败时任务不得视为成功。
+5. 必须通过 `python3 {baseDir}/scripts/save-to-getnote.py` 保存到 Get笔记并归档到指定知识库；脚本失败时任务不得视为成功。
 
 禁止：
 
@@ -41,7 +41,6 @@ metadata: {"openclaw":{"emoji":"📰","requires":{},"services":[{"name":"get-not
   - `{baseDir}/references/output-checklist.md`
   - `{baseDir}/references/personal-priorities.md`（可选；存在时必须读取）
   - `{baseDir}/references/task-descriptions.md`
-  - `{baseDir}/scripts/save-to-getnote.sh`
   - `{baseDir}/scripts/save-to-getnote.py`
 
 - 此 skill 的设计强依赖 Tavily MCP。
@@ -419,7 +418,7 @@ output-checklist.md
 优先使用：
 
 ```bash
-bash {baseDir}/scripts/save-to-getnote.sh ai-daily-report-YYYY-MM-DD.md
+python3 {baseDir}/scripts/save-to-getnote.py ai-daily-report-YYYY-MM-DD.md
 ```
 
 脚本负责：
@@ -433,7 +432,7 @@ bash {baseDir}/scripts/save-to-getnote.sh ai-daily-report-YYYY-MM-DD.md
 
 ### 备选方案
 
-`scripts/save-to-getnote.sh` 不可用时：
+`scripts/save-to-getnote.py` 不可用时：
 
 使用 curl 调用 Open API。
 

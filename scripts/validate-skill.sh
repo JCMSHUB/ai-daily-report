@@ -16,7 +16,6 @@ required_files=(
   "references/output-checklist.md"
   "references/task-descriptions.md"
   "references/personal-priorities.md"
-  "scripts/save-to-getnote.sh"
   "scripts/save-to-getnote.py"
   "scripts/package-skill.sh"
   "scripts/validate-skill.sh"
@@ -50,7 +49,6 @@ if unzip -l "$ZIP_FILE" | grep -q '\.DS_Store'; then
   exit 1
 fi
 
-bash -n scripts/save-to-getnote.sh
 bash -n scripts/package-skill.sh
 bash -n scripts/validate-skill.sh
 python3 - <<'PY'

@@ -218,7 +218,7 @@ Version: 3.2
 发布链路检查：
 
 - Markdown 文件生成成功。
-- `scripts/save-to-getnote.sh` 执行成功。
+- `python3 scripts/save-to-getnote.py` 执行成功。
 - 返回有效访问链接。
 - 已归档至知识库。
 

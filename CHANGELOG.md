@@ -4,6 +4,13 @@
 
 ## 2026-06-29
 
+### Remove GetNote shell wrapper
+
+- 删除 `scripts/save-to-getnote.sh`，避免保存入口重复和后续路径漂移。
+- 将 `SKILL.md`、`references/task-descriptions.md` 和 `references/output-checklist.md` 统一改为直接执行 `python3 scripts/save-to-getnote.py`。
+- 更新 `scripts/validate-skill.sh`，只验证 Python 保存入口、打包脚本和验证脚本。
+- 重建 `ai-daily-report-openclaw-skill.zip`，确保发布包不再包含 shell wrapper。
+
 ### Simplify GetNote save flow with Python
 
 - 将 Get笔记保存主逻辑从 Bash 迁移到 `scripts/save-to-getnote.py`，集中处理配置读取、JSON payload、HTTP 调用和响应判定。
