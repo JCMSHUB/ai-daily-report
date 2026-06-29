@@ -1,0 +1,26 @@
+# Changelog
+
+本文件记录每次提交对应的变更说明。之后修改 skill、脚本、参考资料或打包产物时，必须同步更新本文件。
+
+## 2026-06-29
+
+### Add changelog for tracked changes
+
+- 新增 `CHANGELOG.md`，要求之后每次修改 skill、脚本、参考资料或打包产物时，同步提交变更说明。
+- 回填当前仓库已有两个提交的变更摘要，便于后续审查按提交追踪上下文。
+
+### da44330 — Tighten AI daily report skill workflow
+
+- 修正 `趋势判断` 的执行语义：信号不足时允许省略，或明确写明无足够独立信号，不再强写趋势。
+- 明确 Get笔记发布失败时的任务状态：本地 Markdown 只作为故障保底，不算任务成功。
+- 增加候选事件筛选表要求，覆盖事件、来源、评分、证据类型、Verification 状态、入选栏目或剔除原因。
+- 新增 `references/personal-priorities.md`，把通用 AI 简报收敛到个人关注方向和行动偏好。
+- 强化 `scripts/save-to-getnote.sh`：增加 HTTP 失败判定、超时参数和业务成功字段检查。
+- 新增 `scripts/package-skill.sh` 和 `scripts/validate-skill.sh`，用于稳定打包和静态验证。
+- 重建 `ai-daily-report-openclaw-skill.zip`，并通过包内容一致性验证。
+
+### 20306a0 — Initial ai-daily-report skill snapshot
+
+- 初始化 Git 仓库并提交 skill baseline。
+- 添加 `.gitignore`，忽略 `.DS_Store`。
+- 纳入 `SKILL.md`、`references/`、`scripts/save-to-getnote.sh` 和初始 OpenClaw skill zip。
