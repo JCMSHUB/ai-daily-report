@@ -53,4 +53,34 @@ bash -n scripts/save-to-getnote.sh
 bash -n scripts/package-skill.sh
 bash -n scripts/validate-skill.sh
 
+parse_fixture_field() {
+  local field="$1"
+  printf '%s' '{"success":true,"data":{"note_id":"1914198881881698240"}}' | python3 -c '
+import json, sys
+field = sys.argv[1]
+try:
+    data = json.load(sys.stdin)
+except Exception:
+    print("")
+else:
+    if field == "note_id":
+        print(data.get("data", {}).get("note_id", ""))
+    elif field == "success":
+        success = data.get("success")
+        code = data.get("code")
+        if success is True or code in (0, "0", 200, "200"):
+            print("true")
+        else:
+            print("false")
+' "$field"
+}
+
+parse_success="$(parse_fixture_field success)"
+parse_note_id="$(parse_fixture_field note_id)"
+
+if [ "$parse_success" != "true" ] || [ "$parse_note_id" != "1914198881881698240" ]; then
+  echo "JSON response parser check failed" >&2
+  exit 1
+fi
+
 echo "Skill package validation passed."

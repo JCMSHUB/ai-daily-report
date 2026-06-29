@@ -4,6 +4,12 @@
 
 ## 2026-06-29
 
+### Fix GetNote response parser
+
+- 修复 `scripts/save-to-getnote.sh` 中 JSON 响应解析函数的 stdin 冲突问题，避免 Get笔记返回 `success: true` 和 `note_id` 时仍被误判为保存失败。
+- 在 `scripts/validate-skill.sh` 中增加本地 JSON 解析回归检查，覆盖 `success` 和 `note_id` 提取。
+- 重建 `ai-daily-report-openclaw-skill.zip`，确保发布包包含修复后的脚本。
+
 ### Add changelog for tracked changes
 
 - 新增 `CHANGELOG.md`，要求之后每次修改 skill、脚本、参考资料或打包产物时，同步提交变更说明。

@@ -95,7 +95,7 @@ post_json() {
 
 parse_json_field() {
   local field="$1"
-  python3 - "$field" <<'PY'
+  python3 -c '
 import json, sys
 field = sys.argv[1]
 try:
@@ -112,7 +112,7 @@ else:
             print("true")
         else:
             print("false")
-PY
+' "$field"
 }
 
 RESPONSE="$(post_json "https://openapi.biji.com/open/api/v1/resource/note/save" "$PAYLOAD")"
