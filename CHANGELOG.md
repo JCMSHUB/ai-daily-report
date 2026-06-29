@@ -4,6 +4,13 @@
 
 ## 2026-06-29
 
+### Simplify GetNote save flow with Python
+
+- 将 Get笔记保存主逻辑从 Bash 迁移到 `scripts/save-to-getnote.py`，集中处理配置读取、JSON payload、HTTP 调用和响应判定。
+- 将 `scripts/save-to-getnote.sh` 简化为兼容入口，保持原有调用方式不变。
+- 更新 `scripts/validate-skill.sh`，纳入 Python 语法检查和响应解析函数回归检查。
+- 重建 `ai-daily-report-openclaw-skill.zip`，确保发布包包含新的 Python 保存脚本。
+
 ### Fix GetNote response parser
 
 - 修复 `scripts/save-to-getnote.sh` 中 JSON 响应解析函数的 stdin 冲突问题，避免 Get笔记返回 `success: true` 和 `note_id` 时仍被误判为保存失败。

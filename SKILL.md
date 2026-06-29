@@ -42,6 +42,7 @@ metadata: {"openclaw":{"emoji":"📰","requires":{},"services":[{"name":"get-not
   - `{baseDir}/references/personal-priorities.md`（可选；存在时必须读取）
   - `{baseDir}/references/task-descriptions.md`
   - `{baseDir}/scripts/save-to-getnote.sh`
+  - `{baseDir}/scripts/save-to-getnote.py`
 
 - 此 skill 的设计强依赖 Tavily MCP。
 
