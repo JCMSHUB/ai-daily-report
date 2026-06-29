@@ -245,6 +245,8 @@ Verification Search 使用 `search_depth: advanced`、`max_results: 3~5`，按�
 
 若某个关键方向没有合格候选，允许增加 1 次定向 `advanced` Discovery。目标总调用量为 7~9 次；事实质量门槛未满足时允许超出，不得为了节省调用跳过必要验证。
 
+发布前必须形成候选事件筛选表，至少包含事件、主要来源、综合评分、证据类型、Verification 状态、入选栏目或剔除原因。筛选表不要求写入最终简报，但必须用于剔除低分、重复、不可验证或不可行动内容。
+
 ---
 
 # Preferred Domains

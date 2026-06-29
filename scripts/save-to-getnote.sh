@@ -80,32 +80,58 @@ PY
 
 TOPIC_ID="${GETNOTE_TOPIC_ID:-G0P13z4J}"
 
-RESPONSE="$(curl -s -X POST "https://openapi.biji.com/open/api/v1/resource/note/save" \
-  -H "Authorization: $API_KEY" \
-  -H "X-Client-ID: $CLIENT_ID" \
-  -H "Content-Type: application/json" \
-  -d "$PAYLOAD")"
+post_json() {
+  local url="$1"
+  local payload="$2"
+  curl --silent --show-error --fail \
+    --connect-timeout "${GETNOTE_CONNECT_TIMEOUT:-10}" \
+    --max-time "${GETNOTE_MAX_TIME:-30}" \
+    -X POST "$url" \
+    -H "Authorization: $API_KEY" \
+    -H "X-Client-ID: $CLIENT_ID" \
+    -H "Content-Type: application/json" \
+    -d "$payload"
+}
 
-NOTE_ID="$(printf '%s' "$RESPONSE" | python3 -c '
+parse_json_field() {
+  local field="$1"
+  python3 - "$field" <<'PY'
 import json, sys
+field = sys.argv[1]
 try:
     data = json.load(sys.stdin)
 except Exception:
     print("")
 else:
-    print(data.get("data", {}).get("note_id", ""))
-' 2>/dev/null || true)"
+    if field == "note_id":
+        print(data.get("data", {}).get("note_id", ""))
+    elif field == "success":
+        success = data.get("success")
+        code = data.get("code")
+        if success is True or code in (0, "0", 200, "200"):
+            print("true")
+        else:
+            print("false")
+PY
+}
 
-if [ -n "$NOTE_ID" ]; then
+RESPONSE="$(post_json "https://openapi.biji.com/open/api/v1/resource/note/save" "$PAYLOAD")"
+
+SAVE_OK="$(printf '%s' "$RESPONSE" | parse_json_field success 2>/dev/null || echo "false")"
+NOTE_ID="$(printf '%s' "$RESPONSE" | parse_json_field note_id 2>/dev/null || true)"
+
+if [ "$SAVE_OK" = "true" ] && [ -n "$NOTE_ID" ]; then
   echo "已将 Markdown 内容保存到 Get笔记 -> https://biji.com/note/$NOTE_ID"
   # 自动归入 AI情报简报知识库
-  TOPIC_RESP="$(curl -s -X POST "https://openapi.biji.com/open/api/v1/resource/knowledge/note/batch-add" \
-    -H "Authorization: $API_KEY" \
-    -H "X-Client-ID: $CLIENT_ID" \
-    -H "Content-Type: application/json" \
-    -d "{\"topic_id\":\"$TOPIC_ID\",\"note_ids\":[\"$NOTE_ID\"]}")"
-  TOPIC_OK="$(printf '%s' "$TOPIC_RESP" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("success",False))' 2>/dev/null || echo "false")"
-  if [ "$TOPIC_OK" = "True" ]; then
+  TOPIC_PAYLOAD="$(python3 - "$TOPIC_ID" "$NOTE_ID" <<'PY'
+import json, sys
+topic_id, note_id = sys.argv[1:3]
+print(json.dumps({"topic_id": topic_id, "note_ids": [note_id]}, ensure_ascii=False))
+PY
+)"
+  TOPIC_RESP="$(post_json "https://openapi.biji.com/open/api/v1/resource/knowledge/note/batch-add" "$TOPIC_PAYLOAD")"
+  TOPIC_OK="$(printf '%s' "$TOPIC_RESP" | parse_json_field success 2>/dev/null || echo "false")"
+  if [ "$TOPIC_OK" = "true" ]; then
     echo "已归入知识库（$TOPIC_ID）"
   else
     echo "归入知识库失败:" >&2

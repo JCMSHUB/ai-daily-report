@@ -14,9 +14,9 @@ metadata: {"openclaw":{"emoji":"📰","requires":{},"services":[{"name":"get-not
 
 执行本 skill 时，以下步骤不得跳过：
 
-1. 每次任务运行都必须重新读取 `{baseDir}/references/source-quality.md`、`{baseDir}/references/search-keywords.md`、`{baseDir}/references/template.md`、`{baseDir}/references/output-checklist.md`；不得因为上一轮、昨天或同一会话中已读过而跳过。
-2. 必须按 `search-keywords.md` 分批执行 Discovery，再按 `source-quality.md` 评分、按底层事件去重，只对入围候选执行分级 Verification。
-3. 必须严格使用 `template.md` 的章节结构与 Markdown 规则生成情报简报，不得自由改写栏目。
+1. 每次任务运行都必须重新读取 `{baseDir}/references/source-quality.md`、`{baseDir}/references/search-keywords.md`、`{baseDir}/references/template.md`、`{baseDir}/references/output-checklist.md`；若存在 `{baseDir}/references/personal-priorities.md`，也必须读取；不得因为上一轮、昨天或同一会话中已读过而跳过。
+2. 必须按 `search-keywords.md` 分批执行 Discovery，再按 `source-quality.md` 评分、按底层事件去重，只对入围候选执行分级 Verification。发布前必须形成候选事件筛选表；筛选表可作为内部工作产物，不必写入最终简报。
+3. 必须严格使用 `template.md` 的章节结构与 Markdown 规则生成情报简报，不得自由改写栏目；模板明确允许省略的栏目除外。
 4. 保存前必须按 `output-checklist.md` 完成逐项自检；未通过则必须修改简报，不能直接发布。
 5. 必须通过 `{baseDir}/scripts/save-to-getnote.sh` 保存到 Get笔记并归档到指定知识库；脚本失败时任务不得视为成功。
 
@@ -25,6 +25,7 @@ metadata: {"openclaw":{"emoji":"📰","requires":{},"services":[{"name":"get-not
 - 不读取 reference 文件直接生成简报，或以“上一轮已读过”为由复用旧上下文。
 - 只依据通用新闻摘要或模型记忆生成简报。
 - 跳过 Verification 阶段。
+- 跳过候选事件筛选表。
 - 跳过发布前 checklist。
 - 只本地保存但不保存到 Get笔记。
 
@@ -38,6 +39,7 @@ metadata: {"openclaw":{"emoji":"📰","requires":{},"services":[{"name":"get-not
   - `{baseDir}/references/search-keywords.md`
   - `{baseDir}/references/template.md`
   - `{baseDir}/references/output-checklist.md`
+  - `{baseDir}/references/personal-priorities.md`（可选；存在时必须读取）
   - `{baseDir}/references/task-descriptions.md`
   - `{baseDir}/scripts/save-to-getnote.sh`
 
@@ -163,7 +165,7 @@ Output Structure
 - 趋势判断
 - 我的行动清单
 
-所有简报必须遵循该结构。
+所有简报必须遵循该结构。`值得尝试`、`可以忽略`、`趋势判断` 在信号不足且模板允许时可以省略；若保留 `趋势判断` 标题但信号不足，必须明确写“今日无足够独立信号形成趋势判断”，不得把单条新闻扩写成趋势。
 
 ---
 
@@ -308,6 +310,17 @@ source-quality.md
 - 洗稿转载
 - 无技术增量内容
 
+发布前必须形成候选事件筛选表，至少包含：
+
+- 事件
+- 主要来源
+- 综合评分
+- 证据类型
+- Verification 状态
+- 入选栏目或剔除原因
+
+筛选表用于执行审计，不要求写入最终简报；但若无法说明某事件为什么入选或剔除，必须重新筛选。
+
 ---
 
 ## 5. 撰写情报简报
@@ -325,6 +338,8 @@ template.md
 - 高信息密度
 - 面向注意力分配和后续行动
 - 区分事实、判断和行动建议
+- 每条核心内容必须能说明证据类型：官方公告、GitHub、Hugging Face、arXiv、API 文档、监管文件、论文、模型卡或两个独立高质量报道。
+- 若 `references/personal-priorities.md` 存在，选题、降权和行动清单必须优先遵循其中的个人偏好；若不存在，则使用默认主题层。
 
 长度控制：
 
@@ -433,7 +448,7 @@ bash {baseDir}/scripts/save-to-getnote.sh ai-daily-report-YYYY-MM-DD.md
 ai-daily-report-YYYY-MM-DD.md
 ```
 
-并明确说明失败原因。
+并明确说明失败原因。本地保存只是故障保底产物，不代表任务成功；最终回复必须明确“Get笔记发布失败，任务未成功完成”。
 
 ---
 
