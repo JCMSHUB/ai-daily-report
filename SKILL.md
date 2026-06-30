@@ -14,15 +14,18 @@ metadata: {"openclaw":{"emoji":"📰","requires":{},"services":[{"name":"get-not
 
 执行本 skill 时，以下步骤不得跳过：
 
-1. 每次任务运行都必须重新读取 `{baseDir}/references/source-quality.md`、`{baseDir}/references/search-keywords.md`、`{baseDir}/references/template.md`、`{baseDir}/references/output-checklist.md`；若存在 `{baseDir}/references/personal-priorities.md`，也必须读取；不得因为上一轮、昨天或同一会话中已读过而跳过。
-2. 必须按 `search-keywords.md` 分批执行 Discovery，再按 `source-quality.md` 评分、按底层事件去重，只对入围候选执行分级 Verification。发布前必须形成候选事件筛选表；筛选表可作为内部工作产物，不必写入最终简报。
-3. 必须严格使用 `template.md` 的章节结构与 Markdown 规则生成情报简报，不得自由改写栏目；模板明确允许省略的栏目除外。
-4. 保存前必须按 `output-checklist.md` 完成逐项自检；未通过则必须修改简报，不能直接发布。
-5. 必须通过 `python3 {baseDir}/scripts/save-to-getnote.py` 保存到 Get笔记并归档到指定知识库；脚本失败时任务不得视为成功。
+1. 每次任务运行都必须按阶段读取对应 reference；不得因为上一轮、昨天或同一会话中已读过而跳过。
+2. Discovery 前只读取 `{baseDir}/references/discovery-framework.md`、`{baseDir}/references/event-quality.md`；若存在 `{baseDir}/references/personal-priorities.md`，也必须读取。
+3. Discovery 与 Verification 阶段不得提前读取 `{baseDir}/references/writing-template.md` 或 `{baseDir}/references/publishing-checklist.md`，除非已经进入写作或发布前审核阶段。
+4. 必须按 `discovery-framework.md` 分批执行 Discovery，再按 `event-quality.md` 评分、按底层事件去重，只对入围候选执行分级 Verification。写作前必须形成候选事件筛选表；筛选表可作为内部工作产物，不必写入最终简报。
+5. 写作前必须读取 `writing-template.md`，并严格使用其章节结构与 Markdown 规则生成情报简报，不得自由改写栏目；模板明确允许省略的栏目除外。
+6. 保存前必须读取 `publishing-checklist.md` 并完成逐项自检；未通过则必须修改简报，不能直接发布。
+7. 必须通过 `python3 {baseDir}/scripts/save-to-getnote.py` 保存到 Get笔记并归档到指定知识库；脚本失败时任务不得视为成功。
 
 禁止：
 
 - 不读取 reference 文件直接生成简报，或以“上一轮已读过”为由复用旧上下文。
+- 在 Discovery 或 Verification 阶段提前加载写作模板或发布 checklist，造成检索上下文被无关规则占用。
 - 只依据通用新闻摘要或模型记忆生成简报。
 - 跳过 Verification 阶段。
 - 跳过候选事件筛选表。
@@ -35,13 +38,28 @@ metadata: {"openclaw":{"emoji":"📰","requires":{},"services":[{"name":"get-not
 
 - 这是一个兼容 AgentSkills 的 OpenClaw skill 目录，由 `SKILL.md` 和可选文本参考资料组成。
 - 读取随附资料时，通过 `{baseDir}` 定位：
-  - `{baseDir}/references/source-quality.md`
-  - `{baseDir}/references/search-keywords.md`
-  - `{baseDir}/references/template.md`
-  - `{baseDir}/references/output-checklist.md`
-  - `{baseDir}/references/personal-priorities.md`（可选；存在时必须读取）
-  - `{baseDir}/references/task-descriptions.md`
-  - `{baseDir}/scripts/save-to-getnote.py`
+
+Discovery / Verification：
+
+- `{baseDir}/references/discovery-framework.md`
+- `{baseDir}/references/event-quality.md`
+- `{baseDir}/references/personal-priorities.md`（可选；存在时必须读取）
+
+写作：
+
+- `{baseDir}/references/writing-template.md`
+
+发布前审核：
+
+- `{baseDir}/references/publishing-checklist.md`
+
+定时任务配置：
+
+- `{baseDir}/references/task-descriptions.md`
+
+发布脚本：
+
+- `{baseDir}/scripts/save-to-getnote.py`
 
 - 此 skill 的设计强依赖 Tavily MCP。
 
@@ -108,11 +126,46 @@ TZ=Asia/Shanghai date '+%Y-%m-%d %H:%M CST'
 
 ---
 
-## 2. 读取参考规则
+## 2. 阶段化读取参考规则
 
-每次任务运行时，检索和写作前都必须重新读取下列文件；不得复用上一轮、昨天或同一会话中的旧上下文：
+Reference 必须按阶段读取；不得在任务开始时一次性读取全部 reference，也不得复用上一轮、昨天或同一会话中的旧上下文。
 
-### source-quality.md
+### 启动阶段
+
+读取：
+
+- `SKILL.md`
+- `personal-priorities.md`（若存在）
+
+用途：
+
+- 明确用户个人关注方向、降权主题和行动偏好。
+- 不加载写作模板或发布 checklist。
+
+---
+
+### Discovery 前
+
+读取：
+
+- `discovery-framework.md`
+- `event-quality.md`
+- `personal-priorities.md`（若存在且启动阶段未读）
+
+用途：
+
+- 构造 Tavily 查询。
+- 过滤 PR、SEO、转载和低行动价值信号。
+- 初步判断候选事件是否值得进入 Verification。
+
+不得读取：
+
+- `writing-template.md`
+- `publishing-checklist.md`
+
+---
+
+### event-quality.md
 
 职责：
 
@@ -130,7 +183,7 @@ Source & Event Quality Standard
 
 ---
 
-### search-keywords.md
+### discovery-framework.md
 
 职责：
 
@@ -148,7 +201,7 @@ Search & Discovery Framework
 
 ---
 
-### template.md
+### writing-template.md
 
 职责：
 
@@ -169,7 +222,7 @@ Output Structure
 
 ---
 
-### output-checklist.md
+### publishing-checklist.md
 
 职责：
 
@@ -193,11 +246,9 @@ Final Quality Review
 
 使用 Tavily MCP 从高信噪比信源中发现候选事件。
 
-必须从：
+进入本阶段前，必须读取 `discovery-framework.md`、`event-quality.md` 和 `personal-priorities.md`（若存在）。不得提前读取 `writing-template.md` 或 `publishing-checklist.md`。
 
-search-keywords.md
-
-定义的 Discovery Framework 开始执行。
+必须从 `discovery-framework.md` 定义的 Discovery Framework 开始执行。
 
 固定覆盖：
 
@@ -290,11 +341,7 @@ Verification 推荐参数：
 
 ## 4. 筛选与去重
 
-按照：
-
-source-quality.md
-
-执行。
+按照 `event-quality.md` 执行。若 Discovery 后需要重新确认评分、Routing Rules 或剔除标准，只回看 `event-quality.md`，不要加载写作模板或发布 checklist。
 
 要求：
 
@@ -325,11 +372,9 @@ source-quality.md
 
 ## 5. 撰写情报简报
 
-严格遵循：
+进入写作阶段前，必须读取 `writing-template.md`。此时才允许加载写作结构和 Markdown 规则。
 
-template.md
-
-定义结构。
+严格遵循 `writing-template.md` 定义结构。
 
 要求：
 
@@ -391,11 +436,7 @@ Bullet：
 
 ## 6. 发布前最终审核
 
-必须执行：
-
-output-checklist.md
-
-完整检查流程。
+进入发布前审核阶段时，必须读取 `publishing-checklist.md` 并执行完整检查流程。
 
 包括：
 

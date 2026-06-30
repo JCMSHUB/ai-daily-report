@@ -236,7 +236,7 @@ News volume
 完成五个主题查询后：
 
 1. 按底层事件聚类，合并转载、同源报道和重复 URL。
-2. 使用 `source-quality.md` 初步评分，只保留约 6~8 个候选。
+2. 使用 `event-quality.md` 初步评分，只保留约 6~8 个候选。
 3. 对已有官方、GitHub、Hugging Face、arXiv、API 文档、release note 或监管文件 URL 的候选，优先批量调用 `tavily_extract`。
 4. 已由原始材料完整支持的技术事实不再重复搜索。
 5. 仅对缺少原始来源、缺第二信源或包含高风险声明的候选执行定向 Verification Search。

@@ -2,6 +2,15 @@
 
 本文件记录每次提交对应的变更说明。之后修改 skill、脚本、参考资料或打包产物时，必须同步更新本文件。
 
+## 2026-06-30
+
+### Phase reference loading by workflow stage
+
+- 将运行期 reference 文件按职责重命名：`source-quality.md` -> `event-quality.md`，`search-keywords.md` -> `discovery-framework.md`，`template.md` -> `writing-template.md`，`output-checklist.md` -> `publishing-checklist.md`。
+- 更新 `SKILL.md`，要求按阶段读取 reference：Discovery 前只读取 discovery / quality / personal，写作前才读取 template，发布前才读取 checklist。
+- 更新 `references/task-descriptions.md`，让每日和每周定时任务描述携带同样的阶段化读取硬约束。
+- 更新 `scripts/validate-skill.sh` 和 `ai-daily-report-openclaw-skill.zip`，确保发布包使用新文件名并通过一致性验证。
+
 ## 2026-06-29
 
 ### Remove GetNote shell wrapper
