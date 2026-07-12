@@ -1,68 +1,37 @@
 # OpenClaw 定时任务描述
 
-本文件用于保存 OpenClaw 定时任务中可直接使用的任务描述。任务描述必须与 `SKILL.md`、`references/writing-template.md`、`references/event-quality.md`、`references/discovery-framework.md`、`references/publishing-checklist.md` 和 `references/personal-priorities.md` 保持一致。
+本文件是定时任务的执行契约，必须与 `SKILL.md` 和各 reference 保持一致。定时任务不能以既有会话、昨日读取或历史简报代替本次规定的检索与验证。
 
----
+## 每日 AI 情报简报
 
-# 每日 AI 情报简报任务
-
-执行时间：
-
-每天 20:30（Asia/Shanghai / CST）
-
-任务描述：
+执行时间：每天 20:30（Asia/Shanghai / CST）
 
 ```text
 使用 ai-daily-report skill 生成今日 AI 个人情报简报。
 
-执行时间：每天 20:30（Asia/Shanghai / CST）
+每次运行必须严格执行以下契约：
 
-必须严格按 skill 工作流执行，不得自由改写流程：
-
-1. 每次运行都必须按阶段重新读取对应 reference，不得因为上一轮、昨天或同一会话中已读过而跳过。启动时读取 SKILL.md 和 references/personal-priorities.md（若存在）；Discovery 前只读取 references/discovery-framework.md 与 references/event-quality.md；写作前才读取 references/writing-template.md；发布前审核时才读取 references/publishing-checklist.md。
-2. 使用 Tavily MCP 分批进行 Discovery 与 Verification；优先使用 tavily-remote。遇到 429 时将并发度降到 1，短暂退避后重试 1 次，再失败则切换 tavily-remote-2；遇到 432 或 433 时立即切换 tavily-remote-2。两个 Tavily 实例均不可用时，才允许使用 web_fetch 补充检索。
-3. Discovery 与 Verification 阶段不得提前读取 references/writing-template.md 或 references/publishing-checklist.md，避免检索上下文被写作和发布规则占用。
-4. Discovery 固定组织 5 个主题综合查询，每个主题层 1 次，默认使用 basic 或 fast、time_range=day、max_results=6~8，并关闭 raw content。同批查询尽量并发执行，建议并发度不超过 3；不得把示例关键词逐条串行搜索。
-5. 将值得跟踪、值得尝试的行动意图合并进主题查询；可以忽略优先从 Discovery 的高热度低质量结果中产生，不固定追加噪音查询。若没有明显占据信息流且值得专门解释的噪音，允许省略可以忽略，不得为保留栏目追加搜索。
-6. Discovery 后必须按底层事件去重和初筛，只保留约 6~8 个候选；写作前必须形成候选事件筛选表，包含事件、来源、评分、证据类型、Verification 状态、入选栏目或剔除原因；优先对已知原始 URL 批量调用 tavily_extract。只有缺少原始来源、商业事件缺第二信源或高风险事实仍不明确时，才使用 advanced、max_results=3~5 执行 1~3 次定向 Verification。
-7. 目标 Tavily 总调用量为 7~9 次；仅当事实质量门槛未满足时允许超出，不得为了减少调用跳过必要验证。
-8. 默认检索最近约 24 小时的 AI 领域高信号变化，重点服务个人注意力分配、工具选择、学习重点和后续行动。
-9. 搜索目标不是收集新闻数量，而是筛选：值得跟踪的信息、值得尝试的工具/模型/论文/repo/API、可以忽略的高热度噪音，以及可形成趋势判断的信号。
-10. 所有核心事实必须有可信来源，优先使用官方公告、GitHub、Hugging Face、arXiv、API 文档、监管机构文件或 Reuters/Bloomberg/FT/The Information/SemiAnalysis 等高质量信源。无法验证的内容必须剔除。
-11. 写作前读取并严格使用 references/writing-template.md 的 Markdown 结构输出：今日结论、值得跟踪、值得尝试、可以忽略、趋势判断、我的行动清单、底部数据截止时间；模板允许省略的栏目可以省略。趋势判断信号不足时不得强写。
-12. 推荐正文长度 2500-6000 个中文字符，最高不超过 8000。低于推荐范围不视为失败，事实质量、信息密度和行动价值优先。禁止为满足字数扩写、重复表达、加入空泛分析，或把数字改写成中文表达来凑字数。
-13. 保存前必须读取 references/publishing-checklist.md 并完成自检；不合格内容必须删除、降级或补充验证。
-14. 最终必须以标准 Markdown 保存到 Get笔记，并归档到指定知识库。优先执行 `python3 scripts/save-to-getnote.py`；脚本或 Get笔记保存失败时，本次任务不得视为成功。本地保存只是故障保底，不算任务成功。
-15. 输出结果需返回 Get笔记有效访问链接，并明确数据截止时间。
+1. 按阶段重新读取 reference，不得因为上一轮、昨天或同一会话中已读过而跳过。启动时读取 SKILL.md 和 references/personal-priorities.md（存在时）；Discovery 与 Verification 前只读取 references/discovery-framework.md 和 references/event-quality.md；写作前才读取 references/writing-template.md；发布前才读取 references/publishing-checklist.md。Discovery/Verification 不得提前加载模板或 checklist。
+2. 获取真实中国时间，默认检索最近约 24 小时。只有窗口内首次发布或有可验证实质更新的内容可作为当天核心事件；历史内容只能作背景。
+3. Tavily 优先使用 tavily-remote。429 时并发降至 1、短暂退避重试一次，再失败切换 tavily-remote-2；432/433 立即切换。两个实例均不可用时才可用 web_fetch 补足必要证据，并说明降级。
+4. Discovery 执行五个主题层各一条综合查询：Frontier Models、Agent Runtime、Inference Infrastructure、Open Source Ecosystem、Governance & Regulation。查询必须包含实体/技术锚点、实质事件词和时间/证据意图；不得逐条搜索示例关键词或用泛化 news 查询。默认 basic 或支持时 fast、time_range=day、max_results=6~8、关闭 raw content；并发建议不超过 3。
+5. 搜索结果先按底层事件去重，形成内部候选筛选表：事件与时间、实质增量、来源、证据类型、决策影响、缺口、评分、Verification 状态、入选或剔除原因。候选必须先满足完整事实、窗口内增量、可追溯证据、决策相关性四个硬门槛，再按 event-quality.md 评分。可靠来源本身不能代替决策价值。
+6. 只验证入围候选：优先批量 tavily_extract 已知原始 URL；仅为缺原始来源、商业事实缺独立第二来源、高风险主张不明确或趋势证据不足而执行 1~3 次按事件合并的 advanced Verification。技术事实优先原始材料；商业事实需两个独立高质量来源；治理事实优先官方文件。无法验证的内容直接剔除。
+7. 不得为主题覆盖、栏目、调用预算、字数或“可以忽略”栏目补内容。没有足够信号时输出更短简报，或省略值得尝试、可以忽略、趋势判断等模板允许省略的栏目。
+8. 写作严格使用 references/writing-template.md：每项按事实、判断、行动/观察区分；判断必须能指向证据，行动清单最多 3 条且有对象、目的、完成条件和时间。标准 Markdown，正文最高 8000 个中文字符，无最低长度。
+9. 发布前逐项执行 references/publishing-checklist.md。最终必须用 `python3 scripts/save-to-getnote.py <markdown_file>` 保存、归档到 Get笔记并返回有效访问链接与 CST 数据截至时间。脚本或归档失败时任务未成功完成；本地文件仅是故障产物。
 ```
 
----
+## 每周 AI 情报周报
 
-# 每周 AI 情报周报任务
-
-建议执行时间：
-
-每周日 21:00（Asia/Shanghai / CST）
-
-任务描述：
+建议执行时间：每周日 21:00（Asia/Shanghai / CST）
 
 ```text
 使用 ai-daily-report skill 生成本周 AI 个人情报周报。
 
-执行时间：每周日 21:00（Asia/Shanghai / CST）
+每次运行必须按阶段重新读取对应 reference，禁止用上周会话或旧读取跳过流程：启动读取 SKILL.md 与 personal-priorities（存在时）；补充检索和 Verification 前只读取 discovery-framework 与 event-quality；写作前读取 writing-template；发布前读取 publishing-checklist。检索和复核阶段不得提前读取模板或 checklist。
 
-必须严格按 skill 工作流执行，不得自由改写流程：
+周报不是七篇日报的拼接。先读取本周可访问的简报或记录作为线索，再用 Tavily 验证仍有价值的底层事件、去重并寻找本周新增的实质证据。Tavily 实例切换、候选硬门槛、证据等级、Verification 路由、无填充原则与每日任务完全相同：技术事实以原始材料为准，商业事实需独立交叉验证，治理事实以官方文件为准，无法验证则剔除。
 
-1. 每次运行都必须按阶段重新读取对应 reference，不得因为上一轮、昨天或同一会话中已读过而跳过。启动时读取 SKILL.md 和 references/personal-priorities.md（若存在）；补充检索和事实复核前只读取 references/discovery-framework.md 与 references/event-quality.md；写作前才读取 references/writing-template.md；发布前审核时才读取 references/publishing-checklist.md。
-2. 周报不是七篇日报的简单拼接，而是对最近 7 天 AI 高信号事件的再筛选、去重、归纳和判断。
-3. 补充检索、事实复核和 Verification 阶段不得提前读取 references/writing-template.md 或 references/publishing-checklist.md，避免检索上下文被写作和发布规则占用。
-4. 使用 Tavily MCP 进行补充检索与事实复核；优先复用本周简报中的原始 URL 并批量调用 tavily_extract，只对缺口执行定向 advanced Verification。可并发的独立查询应同批执行，建议并发度不超过 3。优先使用 tavily-remote；遇到 429 时降低并发并退避重试，遇到 432 或 433 时立即切换 tavily-remote-2。两个 Tavily 实例均不可用时，才允许使用 web_fetch 补充检索。
-5. 优先整合本周已经生成的 AI 简报内容；若本周 Get笔记或本地简报可访问，应先读取本周记录，再补充检索缺失信息。
-6. 搜索和筛选目标是回答：本周哪些变化值得持续跟踪，哪些工具/模型/论文/repo/API 值得尝试，哪些热闹信息可以忽略，下周应该采取什么行动。
-7. 所有核心事实必须有可信来源，优先使用官方公告、GitHub、Hugging Face、arXiv、API 文档、监管机构文件或 Reuters/Bloomberg/FT/The Information/SemiAnalysis 等高质量信源。无法验证的内容必须剔除。
-8. 写作前读取并严格使用 references/writing-template.md 的周报变体：标题为「AI 情报周报 — YYYY-Www」，将「今日结论」改为「本周结论」，将「我的行动清单」改为「下周行动清单」，其余结构保持一致。
-9. 推荐正文长度 3500-7000 个中文字符，最高不超过 9000。低于推荐范围不视为失败，事实质量、信息密度和行动价值优先。禁止为满足字数扩写、重复表达、加入空泛分析，或把数字改写成中文表达来凑字数。
-10. 保存前必须读取 references/publishing-checklist.md 并完成自检；不合格内容必须删除、降级或补充验证。
-11. 最终必须以标准 Markdown 保存到 Get笔记，并归档到指定知识库。优先执行 `python3 scripts/save-to-getnote.py`；脚本或 Get笔记保存失败时，本次任务不得视为成功。本地保存只是故障保底，不算任务成功。
-12. 输出结果需返回 Get笔记有效访问链接，并明确本周统计周期和数据截止时间。
+只保留改变下周工具、学习、部署、风险或观察优先级的事件。严格使用 writing-template 的周报变体：标题为「AI 情报周报 — YYYY-Www」，“今日结论”改为“本周结论”，“我的行动清单”改为“下周行动清单”；篇幅最高 9000 个中文字符，无最低长度。发布前逐项执行 checklist，并用 `python3 scripts/save-to-getnote.py <markdown_file>` 保存、归档到 Get笔记，返回有效链接、本周统计周期与数据截至时间；保存或归档失败时任务未成功完成。
 ```

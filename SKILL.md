@@ -1,6 +1,6 @@
 ---
 name: ai-daily-report
-description: 为 AI 行业从业者、研究员、投资人与技术领袖生成面向个人注意力分配的中文 AI 情报简报：通过 Tavily MCP 检索近期一手信源、验证事实、过滤低价值 PR，提炼值得跟踪、值得尝试、可以忽略的信息，并写入 Get笔记。
+description: 为 AI 行业从业者、研究员、投资人与技术领袖生成面向个人注意力分配的中文 AI 情报简报：通过 Tavily MCP 发现近期可验证的一手信号，筛选值得跟踪、试用或忽略的信息，并写入 Get笔记。
 metadata: {"openclaw":{"emoji":"📰","requires":{},"services":[{"name":"get-note","required":true,"description":"必需。OpenClaw 云端已部署的 Get笔记能力，通过 scripts/save-to-getnote.py 保存 Markdown 简报。"}]}}
 ---
 
@@ -8,511 +8,115 @@ metadata: {"openclaw":{"emoji":"📰","requires":{},"services":[{"name":"get-not
 
 当用户要求生成 AI 日报、AI 行业简报、AI 新闻摘要，或面向 AI 领域的个人情报简报时，使用此 skill。
 
----
+目标不是覆盖新闻，而是在有限注意力内回答：什么改变了判断，下一步该做什么，什么不值得分心。
 
-# 强制执行契约
+## 不可跳过的契约
 
-执行本 skill 时，以下步骤不得跳过：
+1. 每次运行均按阶段重新读取所需 reference；不得复用上一轮、昨天或同一会话的读取结果。
+2. Discovery 与 Verification 前只读取 `references/discovery-framework.md`、`references/event-quality.md` 和存在时的 `references/personal-priorities.md`。不得提前读取写作模板或发布 checklist。
+3. Discovery 后按底层事件去重，先完成候选事件筛选表，再只对入围候选执行分级 Verification。
+4. 写作前读取 `references/writing-template.md`；保存前读取 `references/publishing-checklist.md` 并逐项自检。未通过则删除、降级或补证。
+5. 最终必须调用 `python3 {baseDir}/scripts/save-to-getnote.py <markdown_file>` 保存并归档到 Get笔记。脚本或归档失败时，任务不得视为成功。
 
-1. 每次任务运行都必须按阶段读取对应 reference；不得因为上一轮、昨天或同一会话中已读过而跳过。
-2. Discovery 前只读取 `{baseDir}/references/discovery-framework.md`、`{baseDir}/references/event-quality.md`；若存在 `{baseDir}/references/personal-priorities.md`，也必须读取。
-3. Discovery 与 Verification 阶段不得提前读取 `{baseDir}/references/writing-template.md` 或 `{baseDir}/references/publishing-checklist.md`，除非已经进入写作或发布前审核阶段。
-4. 必须按 `discovery-framework.md` 分批执行 Discovery，再按 `event-quality.md` 评分、按底层事件去重，只对入围候选执行分级 Verification。写作前必须形成候选事件筛选表；筛选表可作为内部工作产物，不必写入最终简报。
-5. 写作前必须读取 `writing-template.md`，并严格使用其章节结构与 Markdown 规则生成情报简报，不得自由改写栏目；模板明确允许省略的栏目除外。
-6. 保存前必须读取 `publishing-checklist.md` 并完成逐项自检；未通过则必须修改简报，不能直接发布。
-7. 必须通过 `python3 {baseDir}/scripts/save-to-getnote.py` 保存到 Get笔记并归档到指定知识库；脚本失败时任务不得视为成功。
+禁止：以模型记忆、通用新闻摘要或旧上下文代替检索；以结果数量、字符数或栏目完整性为目标；跳过 Verification、筛选表或发布前检查。
 
-禁止：
+## 运行环境与降级
 
-- 不读取 reference 文件直接生成简报，或以“上一轮已读过”为由复用旧上下文。
-- 在 Discovery 或 Verification 阶段提前加载写作模板或发布 checklist，造成检索上下文被无关规则占用。
-- 只依据通用新闻摘要或模型记忆生成简报。
-- 跳过 Verification 阶段。
-- 跳过候选事件筛选表。
-- 跳过发布前 checklist。
-- 只本地保存但不保存到 Get笔记。
+使用 `{baseDir}` 定位随附文件。此 skill 依赖 Tavily MCP，优先使用 `tavily-remote`，备用为 `tavily-remote-2`。
 
----
+- 429：并发降至 1，短暂退避后重试 1 次；仍失败则切换实例。
+- 432 或 433：立即切换实例。
+- 两个实例都不可用：仅可用 `web_fetch` 补足必要证据，并在输出中说明检索降级。
 
-# OpenClaw 兼容性
+## 1. 确定窗口
 
-- 这是一个兼容 AgentSkills 的 OpenClaw skill 目录，由 `SKILL.md` 和可选文本参考资料组成。
-- 读取随附资料时，通过 `{baseDir}` 定位：
+从运行环境取得中国时区的真实当前时间。未指定范围时，默认覆盖最近约 24 小时；只有在窗口内首次发布，或有可验证的实质更新，才可作为当天核心事件。历史资料只能标为背景。
 
-Discovery / Verification：
+简报底部标注数据截至时间（CST / 中国时间）。
 
-- `{baseDir}/references/discovery-framework.md`
-- `{baseDir}/references/event-quality.md`
-- `{baseDir}/references/personal-priorities.md`（可选；存在时必须读取）
+## 2. 阶段化读取
 
-写作：
+### 启动
 
-- `{baseDir}/references/writing-template.md`
+读取 `SKILL.md` 与存在时的 `references/personal-priorities.md`，只用于确定个人优先级和降权主题。
 
-发布前审核：
+### Discovery 与 Verification 前
 
-- `{baseDir}/references/publishing-checklist.md`
+重新读取：
 
-定时任务配置：
+- `references/discovery-framework.md`
+- `references/event-quality.md`
+- `references/personal-priorities.md`（存在时）
 
-- `{baseDir}/references/task-descriptions.md`
+此阶段不得读取：
 
-发布脚本：
+- `references/writing-template.md`
+- `references/publishing-checklist.md`
 
-- `{baseDir}/scripts/save-to-getnote.py`
+### 写作前与发布前
 
-- 此 skill 的设计强依赖 Tavily MCP。
+写作前读取 `references/writing-template.md`；完成 Markdown 后才读取 `references/publishing-checklist.md`。
 
-配置两个 Tavily MCP 实例：
+`references/task-descriptions.md` 是每日与每周定时任务的配置文本，修改工作流时必须同步维护。
 
-- tavily-remote
-- tavily-remote-2
+## 3. Discovery：寻找事件增量
 
-当一个实例返回 429：
+按照 `discovery-framework.md` 组织五个主题层的初始综合查询：Frontier Models、Agent Runtime、Inference Infrastructure、Open Source Ecosystem、Governance & Regulation。
 
-- 降低并发度到 1。
-- 短暂退避后重试 1 次。
-- 再次失败时切换到另一个实例。
+每条查询应包含：主题实体或技术锚点、实质事件词（例如 release、pricing、benchmark、policy、security、availability）以及时间窗口。目标是找“发生了什么变化”，不是找主题页面或观点文章。
 
-当一个实例返回 432 或 433：
+执行规则：
 
-立即切换到另一个实例重试。
+- 每层 1 条综合查询，同批并发，建议并发不超过 3。
+- 默认 `search_depth: basic`（支持时可用 `fast`）、`time_range: day`、`max_results: 6~8`、`include_raw_content: false`。
+- 优先让官方公告、GitHub、Hugging Face、arXiv、API/release 文档和监管文件进入候选池；高质量媒体用于发现或交叉验证，不能替代可获得的一手材料。
+- 不把示例关键词逐条搜索；不为“可以忽略”栏目额外制造噪音查询。
+- 某主题无合格候选时，最多追加 1 条带明确实体和缺口的 `advanced` 查询，不能用泛化查询补数量。
 
-若两个实例均已耗尽额度：
+## 4. 候选筛选与 Verification
 
-降级使用：
+先按底层事件聚类：同一发布、同一文件、同一产品更新或同一交易只是一件事；转载数量不是独立信号。
 
-- web_fetch
+每个候选先填写内部筛选表：事件与时间、实质增量、主要来源、证据类型、受影响的决策、事实缺口、评分、Verification 状态、入选栏目或剔除原因。只有先通过以下四个门槛的候选才评分：
 
-补充检索。
+1. 有明确实体、动作、对象和结果。
+2. 有窗口内的首次发布或实质更新证据。
+3. 有原始来源，或明确记录为什么只能使用高质量二手来源。
+4. 能改变工具选择、学习、部署判断、风险判断或后续观察对象之一。
 
----
+通过门槛后，按 `event-quality.md` 评分。来源质量只衡量证据可靠性，不能单独把事件推入正文；没有行动或判断增量的可靠信息仍应剔除。
 
-# 最终交付要求
+对入围候选优先把已知原始 URL 批量传给 `tavily_extract`。只在下列情况进行 1~3 次、按事件合并的 `advanced` Verification Search：缺原始来源、商业事件缺第二个独立来源、高风险事实未明确，或趋势判断缺独立支持。
 
-最终简报必须：
+验证时逐项检查最终会写入的核心主张，而不只核对标题。技术事件以原始技术材料为准；商业事件需要两个独立高质量来源；治理事件以监管或官方文件为准。无法验证、时间不在窗口内、或没有决策增量的候选直接剔除。
 
-- 保存到 Get笔记
-- 归档到指定知识库
-- 返回有效访问链接
+没有足够高质量事件时，输出更短简报是正确结果；不得用低价值项目补足主题、栏目或篇幅。
 
-若发布失败：
+## 5. 写作
 
-任务不得视为成功。
+此时读取 `references/writing-template.md`，严格采用其章节结构与 Markdown 规则。模板明确允许省略的栏目可以省略。
 
----
+对每项核心内容：
 
-# 工作流
+- 先写可追溯事实，再写基于事实的判断，最后写行动或观察。
+- 事实、推断和建议不得混写为确定事实。
+- 每个判断都应能回答反事实问题：若这件事没有发生，读者的选择或观察重点是否会不同？若不会，不进核心正文。
+- 信源必须链接到实际支撑该主张的具体页面；高风险或商业主张按模板给出交叉来源。
 
-## 1. 确定日期窗口
+中文输出，使用标准 Markdown。以信息密度决定篇幅，最高 8000 个中文字符；没有最小长度要求。
 
-从运行环境获取真实当前日期与中国时区。
+## 6. 发布
 
-如果可以执行 shell：
+完成正文后读取 `references/publishing-checklist.md`。任何未通过项必须修正后再发布。
 
-优先运行：
-
-```bash
-TZ=Asia/Shanghai date '+%Y-%m-%d %H:%M CST'
-```
-
-除非用户指定其他日期范围：
-
-默认检索最近约 24 小时内容。
-
-简报底部必须标注：
-
-数据截止时间（CST / 中国时间）。
-
----
-
-## 2. 阶段化读取参考规则
-
-Reference 必须按阶段读取；不得在任务开始时一次性读取全部 reference，也不得复用上一轮、昨天或同一会话中的旧上下文。
-
-### 启动阶段
-
-读取：
-
-- `SKILL.md`
-- `personal-priorities.md`（若存在）
-
-用途：
-
-- 明确用户个人关注方向、降权主题和行动偏好。
-- 不加载写作模板或发布 checklist。
-
----
-
-### Discovery 前
-
-读取：
-
-- `discovery-framework.md`
-- `event-quality.md`
-- `personal-priorities.md`（若存在且启动阶段未读）
-
-用途：
-
-- 构造 Tavily 查询。
-- 过滤 PR、SEO、转载和低行动价值信号。
-- 初步判断候选事件是否值得进入 Verification。
-
-不得读取：
-
-- `writing-template.md`
-- `publishing-checklist.md`
-
----
-
-### event-quality.md
-
-职责：
-
-Source & Event Quality Standard
-
-定义：
-
-- Event Intelligence Score
-- Routing Rules
-- Strategic Override Rules
-- Fact Quality Rules
-- Actionability Rules
-
-用于筛选高价值事件。
-
----
-
-### discovery-framework.md
-
-职责：
-
-Search & Discovery Framework
-
-定义：
-
-- Discovery Layers
-- Preferred Domains
-- Lower-Priority Domains
-- Noise Filters
-- Success Criteria
-
-用于发现高价值行业信号。
-
----
-
-### writing-template.md
-
-职责：
-
-Output Structure
-
-定义情报简报最终结构。
-
-包括：
-
-- 今日结论
-- 值得跟踪
-- 值得尝试
-- 可以忽略
-- 趋势判断
-- 我的行动清单
-
-所有简报必须遵循该结构。`值得尝试`、`可以忽略`、`趋势判断` 在信号不足且模板允许时可以省略；若保留 `趋势判断` 标题但信号不足，必须明确写“今日无足够独立信号形成趋势判断”，不得把单条新闻扩写成趋势。
-
----
-
-### publishing-checklist.md
-
-职责：
-
-Final Quality Review
-
-定义：
-
-- Event Selection Review
-- Fact Quality Review
-- Actionability Review
-- Formatting Review
-- Publishing Review
-
-简报发布前必须通过全部检查。
-
----
-
-## 3. 两阶段 Tavily 检索
-
-### Discovery 阶段
-
-使用 Tavily MCP 从高信噪比信源中发现候选事件。
-
-进入本阶段前，必须读取 `discovery-framework.md`、`event-quality.md` 和 `personal-priorities.md`（若存在）。不得提前读取 `writing-template.md` 或 `publishing-checklist.md`。
-
-必须从 `discovery-framework.md` 定义的 Discovery Framework 开始执行。
-
-固定覆盖：
-
-- Frontier Models
-- Agent Runtime
-- Inference Infrastructure
-- Open Source Ecosystem
-- Governance & Regulation
-
-执行要求：
-
-- 每个主题层只组织 1 个综合查询，共 5 个基础查询；示例关键词用于组合查询，不得逐条全部执行。
-- 将 `值得跟踪`、`值得尝试` 的行动意图合并进主题查询，不再固定追加独立查询。
-- `可以忽略` 优先从 Discovery 的高热度低质量结果中产生，不为凑栏目固定搜索噪音。
-- 同一批查询应并发执行；建议并发度不超过 3。若运行时不支持并发，仍保持相同查询预算。
-
-Discovery 推荐参数：
-
-- search_depth: basic；延迟敏感且当前 Tavily 实例支持时可用 fast
-- time_range: day
-- max_results: 6~8
-- include_raw_content: false
-
-优先参考：
-
-- GitHub
-- Hugging Face
-- arXiv
-- 官方博客
-- Reuters
-- Bloomberg
-- FT
-- The Information
-- SemiAnalysis
-
-Discovery 完成后：
-
-- 按底层事件聚类、URL 去重并完成初筛。
-- 只保留约 6~8 个高分候选进入内容提取与 Verification。
-- 若某关键方向没有合格候选，才允许增加 1 次定向 `advanced` 查询。
-
----
-
-### Verification 阶段
-
-只对入围候选事件进行验证。不得机械地为每个候选再执行一次搜索。
-
-优先复用 Discovery 已获得的原始 URL：
-
-- 将已知 URL 合并为一次 `tavily_extract` 批量提取。
-- 若当前 MCP 仅支持单 URL，则在同一批次并发提取，禁止逐条串行。
-- 已由官方原始材料完整支持的技术事实，无需再次搜索同一事实。
-
-技术类事件优先验证：
-
-- GitHub
-- API
-- Benchmark
-- Model Card
-- Release Note
-- Documentation
-
-商业类事件：
-
-至少两个高质量来源交叉验证。
-
-治理类事件：
-
-优先监管机构与官方文件。
-
-只有在以下情况增加定向 Verification Search：
-
-- 缺少原始来源。
-- 商业事件缺少第二个独立高质量来源。
-- 高风险数字、benchmark、监管命令或能力声明仍不明确。
-- 趋势判断的关键支持信号不足。
-
-Verification 推荐参数：
-
-- search_depth: advanced
-- max_results: 3~5
-
-将需要补证的候选按底层事件合并，通常并发执行 1~3 次定向查询。Discovery、提取和 Verification 的目标总调用量为 7~9 次；仅当事实质量门槛未满足时允许超出，不能为满足调用预算降低验证标准。
-
-无法验证的事件：
-
-直接剔除。
-
----
-
-## 4. 筛选与去重
-
-按照 `event-quality.md` 执行。若 Discovery 后需要重新确认评分、Routing Rules 或剔除标准，只回看 `event-quality.md`，不要加载写作模板或发布 checklist。
-
-要求：
-
-- 按底层事件去重
-- 优先原始信源
-- 保留技术增量
-- 保留战略价值
-
-剔除：
-
-- PR宣传
-- SEO内容
-- 洗稿转载
-- 无技术增量内容
-
-发布前必须形成候选事件筛选表，至少包含：
-
-- 事件
-- 主要来源
-- 综合评分
-- 证据类型
-- Verification 状态
-- 入选栏目或剔除原因
-
-筛选表用于执行审计，不要求写入最终简报；但若无法说明某事件为什么入选或剔除，必须重新筛选。
-
----
-
-## 5. 撰写情报简报
-
-进入写作阶段前，必须读取 `writing-template.md`。此时才允许加载写作结构和 Markdown 规则。
-
-严格遵循 `writing-template.md` 定义结构。
-
-要求：
-
-- 中文输出
-- 专业表达
-- 高信息密度
-- 面向注意力分配和后续行动
-- 区分事实、判断和行动建议
-- 每条核心内容必须能说明证据类型：官方公告、GitHub、Hugging Face、arXiv、API 文档、监管文件、论文、模型卡或两个独立高质量报道。
-- 若 `references/personal-priorities.md` 存在，选题、降权和行动清单必须优先遵循其中的个人偏好；若不存在，则使用默认主题层。
-
-长度控制：
-
-- 推荐 2500~6000 个中文字符
-- 最大不超过 8000 个中文字符
-- 低于推荐范围不视为失败；信息密度和事实质量优先于字数
-- 禁止为满足字数扩写、重复表达、加入空泛分析，或将数字改写成中文大写/口语表达来凑字数
-
----
-
-### 内容要求
-
-每条核心信息应回答：
-
-- 发生了什么
-- 对我有什么判断价值
-- 是否值得跟踪或尝试
-- 下一步检查什么或做什么
-
-避免：
-
-- 模板化分析
-- 空洞结论
-- 重复表达
-- 新闻堆砌
-
----
-
-### Markdown 要求
-
-禁止：
-
-- HTML
-- style
-- iframe
-- Markdown 引用块（>）
-
-要求：
-
-- 标题层级连续
-- 标准 Markdown
-- 普通列表格式
-
-Bullet：
-
-单条不超过 180 字。
-
----
-
-## 6. 发布前最终审核
-
-进入发布前审核阶段时，必须读取 `publishing-checklist.md` 并执行完整检查流程。
-
-包括：
-
-- 内容审核
-- 事实审核
-- 战略信号审核
-- Markdown 审核
-- 发布审核
-
-未通过检查的内容：
-
-必须删除、降级或补充验证。
-
----
-
-## 7. 保存到 Get笔记
-
-最终简报必须保存到 Get笔记。
-
-优先使用：
+执行：
 
 ```bash
 python3 {baseDir}/scripts/save-to-getnote.py ai-daily-report-YYYY-MM-DD.md
 ```
 
-脚本负责：
+成功条件：Markdown 已保存、知识库归档成功、返回有效访问链接。若 API 与脚本均失败，可保留本地 Markdown 作为故障产物，但最终回复必须明确“Get笔记发布失败，任务未成功完成”。
 
-- 保存 Markdown
-- 创建笔记
-- 加入知识库
-- 返回访问链接
+## 最终交付
 
----
-
-### 备选方案
-
-`scripts/save-to-getnote.py` 不可用时：
-
-使用 curl 调用 Open API。
-
----
-
-### 保底方案
-
-脚本与 API 均失败时：
-
-本地保存：
-
-```text
-ai-daily-report-YYYY-MM-DD.md
-```
-
-并明确说明失败原因。本地保存只是故障保底产物，不代表任务成功；最终回复必须明确“Get笔记发布失败，任务未成功完成”。
-
----
-
-# 最终目标
-
-情报简报应回答三个问题：
-
-1. 今天哪些信息值得投入注意力？
-
-2. 哪些信息值得跟踪、试用或忽略？
-
-3. 下一步应该做什么？
-
-输出重点：
-
-- 高信号事件
-- 明确判断
-- 注意力分配
-- 可执行行动
-
-而不是：
-
-- 新闻堆砌
-- PR宣传
-- SEO内容
-- 模板化分析
+返回 Get笔记有效访问链接和数据截至时间。最终简报应让读者仅看“今日结论”和“我的行动清单”也能决定今天要读、试、跟踪什么，以及哪些信息可以忽略。
