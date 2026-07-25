@@ -4,6 +4,13 @@
 
 ## 2026-07-25
 
+### Persist recent reports for deterministic deduplication
+
+- 在现有 `save-to-getnote.py` 中增加本地近期简报归档：远端保存和知识库归档成功后，将 Markdown 写入 `AI_DAILY_REPORT_LOCAL_DIR`；默认目录为 `~/.openclaw/ai-daily-report/recent-reports`。
+- 每次成功发布时自动清理超过 `AI_DAILY_REPORT_RETENTION_DAYS` 的 Markdown，默认保留 14 天；无需新增脚本或独立定时任务。
+- 将跨期对照改成可执行流程：Discovery 形成候选后，只在最新最多 7 期本地简报中搜索候选实体、对象、版本和事件键，并读取命中段落，避免把旧简报全文带入上下文。
+- 扩展静态验证，覆盖本地副本写入和过期文件清理；同步更新 skill、发布检查表及每日/每周任务契约。
+
 ### Enforce evidence gates and cross-report novelty
 
 - 根据 2026-07-17、07-20、07-21、07-24 四篇真实日报的执行结果，将近期简报与一手来源时间线纳入事件增量对照，避免同一发布跨期重复占位。

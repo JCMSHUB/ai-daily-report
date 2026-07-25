@@ -1,7 +1,7 @@
 ---
 name: ai-daily-report
 description: 为 AI 行业从业者、研究员、投资人与技术领袖生成面向个人注意力分配的中文 AI 情报简报：通过 Tavily MCP 发现近期可验证的一手信号，筛选值得跟踪、试用或忽略的信息，并写入 Get笔记。
-metadata: {"openclaw":{"emoji":"📰","requires":{},"services":[{"name":"get-note","required":true,"description":"必需。OpenClaw 云端已部署的 Get笔记能力，通过 scripts/save-to-getnote.py 保存 Markdown 简报。"}]}}
+metadata: {"openclaw":{"emoji":"📰","requires":{},"services":[{"name":"get-note","required":true,"description":"必需。OpenClaw 云端已部署的 Get笔记能力，通过 scripts/save-to-getnote.py 保存 Markdown 简报，并保留本地近期副本。"}]}}
 ---
 
 # AI 个人情报简报
@@ -14,7 +14,7 @@ metadata: {"openclaw":{"emoji":"📰","requires":{},"services":[{"name":"get-not
 
 1. 每次运行均按阶段重新读取所需 reference；不得复用上一轮、昨天或同一会话的读取结果。
 2. Discovery 与 Verification 前只读取 `references/discovery-framework.md`、`references/event-quality.md` 和存在时的 `references/personal-priorities.md`。不得提前读取写作模板或发布 checklist。
-3. Discovery 后按底层事件去重，并用可访问的最近 3~7 期简报与一手来源时间线核对是否有新增量；历史简报只用于事件对照，不能替代本次检索和验证。
+3. Discovery 后按底层事件去重，并查询本地近期简报目录中最新最多 7 期与一手来源时间线，核对是否有新增量；历史简报只用于事件对照，不能替代本次检索和验证。
 4. 先完成候选事件筛选表，再只对入围候选执行分级 Verification。最终候选的每项核心主张必须有原子事实证据记录。
 5. 只有全部最终候选通过写作前证据准入，才读取 `references/writing-template.md`；保存前读取 `references/publishing-checklist.md` 并逐项自检。未通过则删除、降级或补证。
 6. 最终必须调用 `python3 {baseDir}/scripts/save-to-getnote.py <markdown_file>` 保存并归档到 Get笔记。脚本或归档失败时，任务不得视为成功。
@@ -28,6 +28,8 @@ metadata: {"openclaw":{"emoji":"📰","requires":{},"services":[{"name":"get-not
 - 429：并发降至 1，短暂退避后重试 1 次；仍失败则切换实例。
 - 432 或 433：立即切换实例。
 - 两个实例都不可用：仅可用 `web_fetch` 补足必要证据，并在输出中说明检索降级。
+
+本地近期简报目录默认为 `~/.openclaw/ai-daily-report/recent-reports`，可用 `AI_DAILY_REPORT_LOCAL_DIR` 覆盖。保存脚本在每次成功发布后写入一份 Markdown 副本，并删除超过 `AI_DAILY_REPORT_RETENTION_DAYS` 的文件；默认保留 14 天。
 
 ## 1. 确定窗口
 
@@ -76,7 +78,7 @@ metadata: {"openclaw":{"emoji":"📰","requires":{},"services":[{"name":"get-not
 
 ## 4. 候选筛选与 Verification
 
-先按底层事件聚类：同一发布、同一文件、同一产品更新或同一交易只是一件事；转载数量不是独立信号。对每个候选查明一手来源中的前一状态与当前状态，并在可访问时检查最近 3~7 期简报。旧事件只有出现会改变判断或行动的新状态、新数据、新能力、新风险或新入口时才能再次入选。
+先按底层事件聚类：同一发布、同一文件、同一产品更新或同一交易只是一件事；转载数量不是独立信号。Discovery 形成候选后，列出本地近期简报目录中按修改时间排序的最新最多 7 个 Markdown，只用候选的实体、对象、版本和事件键搜索匹配内容，并读取命中段落，不整篇加载无关旧简报。再查明一手来源中的前一状态与当前状态。旧事件只有出现会改变判断或行动的新状态、新数据、新能力、新风险或新入口时才能再次入选。
 
 每个候选先填写内部筛选表：事件键、事件与时间、前一状态、当前发布状态、相对近期简报或来源时间线的实质增量、主要来源与等级、受影响的决策、事实缺口、评分、Verification 状态、唯一主栏目或剔除原因。只有先通过以下四个门槛的候选才评分：
 
@@ -120,7 +122,7 @@ metadata: {"openclaw":{"emoji":"📰","requires":{},"services":[{"name":"get-not
 python3 {baseDir}/scripts/save-to-getnote.py ai-daily-report-YYYY-MM-DD.md
 ```
 
-成功条件：Markdown 已保存、知识库归档成功、返回有效访问链接。若 API 与脚本均失败，可保留本地 Markdown 作为故障产物，但最终回复必须明确“Get笔记发布失败，任务未成功完成”。
+成功条件：Markdown 已保存、知识库归档成功、返回有效访问链接，并已写入本地近期简报目录。若 API 与脚本均失败，可保留原始本地 Markdown 作为故障产物，但最终回复必须明确“Get笔记发布失败，任务未成功完成”。
 
 ## 最终交付
 

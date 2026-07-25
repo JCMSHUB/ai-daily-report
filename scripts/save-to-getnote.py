@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Save an ai-daily-report Markdown file to Get笔记 and archive it."""
+"""Publish an AI report to Get笔记 and retain a bounded local Markdown history."""
 
 import json
 import os
 import sys
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -13,6 +14,8 @@ SAVE_URL = "https://openapi.biji.com/open/api/v1/resource/note/save"
 ARCHIVE_URL = "https://openapi.biji.com/open/api/v1/resource/knowledge/note/batch-add"
 DEFAULT_CONFIG_FILE = "/root/.openclaw/openclaw.json"
 DEFAULT_TOPIC_ID = "G0P13z4J"
+DEFAULT_LOCAL_DIR = Path.home() / ".openclaw" / "ai-daily-report" / "recent-reports"
+DEFAULT_RETENTION_DAYS = 14
 
 
 def load_openclaw_env(config_file):
@@ -80,6 +83,36 @@ def credentials():
     return api_key, client_id
 
 
+def archive_locally(markdown_file, markdown):
+    archive_dir = Path(
+        os.environ.get("AI_DAILY_REPORT_LOCAL_DIR", str(DEFAULT_LOCAL_DIR))
+    ).expanduser()
+    try:
+        retention_days = int(
+            os.environ.get("AI_DAILY_REPORT_RETENTION_DAYS", str(DEFAULT_RETENTION_DAYS))
+        )
+    except ValueError as exc:
+        raise RuntimeError("AI_DAILY_REPORT_RETENTION_DAYS 必须是正整数。") from exc
+    if retention_days < 1:
+        raise RuntimeError("AI_DAILY_REPORT_RETENTION_DAYS 必须是正整数。")
+
+    try:
+        archive_dir.mkdir(parents=True, exist_ok=True)
+        cutoff = time.time() - retention_days * 86400
+        removed = 0
+        for path in archive_dir.glob("*.md"):
+            if path.is_file() and path.stat().st_mtime < cutoff:
+                path.unlink()
+                removed += 1
+
+        archive_file = archive_dir / markdown_file.name
+        archive_file.write_text(markdown, encoding="utf-8")
+    except OSError as exc:
+        raise RuntimeError(f"本地近期简报归档失败: {exc}") from exc
+
+    return archive_file, removed
+
+
 def save(markdown_file):
     if not markdown_file.is_file():
         raise RuntimeError(f"Markdown 文件不存在: {markdown_file}")
@@ -109,6 +142,10 @@ def save(markdown_file):
         raise RuntimeError("归入知识库失败:\n" + json.dumps(archive_response, ensure_ascii=False, indent=2))
 
     print(f"已归入知识库（{topic_id}）")
+    archive_file, removed = archive_locally(markdown_file, markdown)
+    print(f"已保存本地近期简报 -> {archive_file}")
+    if removed:
+        print(f"已清理 {removed} 份过期本地简报")
 
 
 def main(argv):

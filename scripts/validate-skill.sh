@@ -60,6 +60,10 @@ PY
 
 python3 - <<'PY'
 import importlib.util
+import os
+import tempfile
+import time
+from pathlib import Path
 
 spec = importlib.util.spec_from_file_location("save_to_getnote", "scripts/save-to-getnote.py")
 module = importlib.util.module_from_spec(spec)
@@ -68,6 +72,27 @@ spec.loader.exec_module(module)
 fixture = {"success": True, "data": {"note_id": "1914198881881698240"}}
 if not module.is_success(fixture) or module.note_id_from(fixture) != "1914198881881698240":
     raise SystemExit("JSON response parser check failed")
+
+with tempfile.TemporaryDirectory() as tmp:
+    archive_dir = Path(tmp)
+    old_report = archive_dir / "ai-daily-report-older.md"
+    unrelated_file = archive_dir / "keep.txt"
+    old_report.write_text("old", encoding="utf-8")
+    unrelated_file.write_text("keep", encoding="utf-8")
+    old_time = time.time() - 15 * 86400
+    os.utime(old_report, (old_time, old_time))
+
+    os.environ["AI_DAILY_REPORT_LOCAL_DIR"] = tmp
+    os.environ["AI_DAILY_REPORT_RETENTION_DAYS"] = "14"
+    report = Path("ai-daily-report-2026-07-25.md")
+    archive_file, removed = module.archive_locally(report, "# AI 情报简报")
+
+    if archive_file.read_text(encoding="utf-8") != "# AI 情报简报":
+        raise SystemExit("Local report archive check failed")
+    if old_report.exists() or removed != 1:
+        raise SystemExit("Local report retention check failed")
+    if not unrelated_file.exists():
+        raise SystemExit("Local report cleanup removed a non-Markdown file")
 PY
 
 echo "Skill package validation passed."
