@@ -59,6 +59,39 @@ compile(path.read_text(encoding="utf-8"), str(path), "exec")
 PY
 
 python3 - <<'PY'
+from pathlib import Path
+
+skill = Path("SKILL.md").read_text(encoding="utf-8")
+discovery = Path("references/discovery-framework.md").read_text(encoding="utf-8")
+tasks_path = Path("references/task-descriptions.md")
+tasks = tasks_path.read_text(encoding="utf-8")
+all_contracts = "\n".join((skill, discovery, tasks))
+
+required = {
+    "SKILL.md": (skill, ("日报查询本地最新最多 3 期", "每次只传 1 个原始 URL", "不得用 `web_fetch`")),
+    "references/discovery-framework.md": (discovery, ("snippet 只可用于", "每次只传 1 个原始 URL")),
+    "references/task-descriptions.md": (tasks, ("timeoutSeconds: 900", "执行审计由独立任务负责")),
+}
+for filename, (content, phrases) in required.items():
+    for phrase in phrases:
+        if phrase not in content:
+            raise SystemExit(f"Missing contract in {filename}: {phrase}")
+
+forbidden = (
+    "两个实例均不可用时才可用 web_fetch",
+    "批量传给 `tavily_extract`",
+    "执行过程记录（强制",
+    "run-logs",
+)
+for phrase in forbidden:
+    if phrase in all_contracts:
+        raise SystemExit(f"Obsolete or duplicated contract remains: {phrase}")
+
+if len(tasks.splitlines()) > 60:
+    raise SystemExit("Cron task descriptions exceed 60 lines; keep workflow details in the skill")
+PY
+
+python3 - <<'PY'
 import importlib.util
 import os
 import tempfile

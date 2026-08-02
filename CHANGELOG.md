@@ -2,6 +2,17 @@
 
 本文件记录每次提交对应的变更说明。之后修改 skill、脚本、参考资料或打包产物时，必须同步更新本文件。
 
+## 2026-08-02
+
+### Converge the skill and reduce cron to runtime constraints
+
+- 将实际运行反馈中的有效规则回迁到 `SKILL.md` 和阶段 reference：低信号期提前收敛、疑似旧闻最多一次定向日期核查、snippet 仅用于剔除/定位、单 URL 加 query 的聚焦提取。
+- 日报历史对照收敛为最新最多 3 期，周报保留本周最多 7 期；同步更新 Discovery、证据标准、写作模板和发布检查表。
+- 明确 Tavily 主备实例与带前缀工具约束：禁止真实调用探测可用性，双实例均不可用时终止，不再使用 `web_fetch` 降级。
+- 重写每日/每周 cron 任务描述，只保留固定路径、时区窗口、工具通道、900 秒超时、重新读取 skill、发布入口和失败条件；不再复制检索、验证、写作实现细节。
+- 执行审计明确由独立任务承担，`ai-daily-report` skill 和 cron 不生成自审计日志。
+- 扩展现有验证脚本，阻止旧 `web_fetch` 降级、批量 extract、内置审计文本和超过 60 行的 cron 描述重新进入发布包。
+
 ## 2026-07-25
 
 ### Persist recent reports for deterministic deduplication
