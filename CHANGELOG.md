@@ -2,6 +2,14 @@
 
 本文件记录每次提交对应的变更说明。之后修改 skill、脚本、参考资料或打包产物时，必须同步更新本文件。
 
+## 2026-08-03
+
+### Add an independent deterministic execution auditor
+
+- 新增独立的 `audit/audit_run.py`，只读解析 APM/OpenTelemetry Trace JSON 与最终 Markdown，不依赖执行模型的自评结论。
+- 首版覆盖工具证据缺失、阶段顺序、候选表字段、原子事实记录、低信号格式、Cron 规则漂移和发布链接检查，并同时支持 JSON 与 Markdown 输出。
+- 新增审计器使用说明和标准库单元测试；审计目录不进入 OpenClaw skill ZIP，保持执行与审计相互独立。
+
 ## 2026-08-02
 
 ### Converge the skill and reduce cron to runtime constraints
