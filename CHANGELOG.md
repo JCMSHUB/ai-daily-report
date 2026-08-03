@@ -4,6 +4,11 @@
 
 ## 2026-08-03
 
+### Add repository documentation
+
+- 新增根目录 `README.md`，说明项目目标、核心能力、仓库结构、运行要求、OpenClaw 部署、验证打包、Get笔记发布和独立审计器用法。
+- README 只链接定时任务与详细契约的唯一来源，不复制完整工作流，降低文档与 skill 规则漂移风险。
+
 ### Add an independent deterministic execution auditor
 
 - 新增独立的 `audit/audit_run.py`，只读解析 APM/OpenTelemetry Trace JSON 与最终 Markdown，不依赖执行模型的自评结论。
